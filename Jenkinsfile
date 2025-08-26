@@ -1,45 +1,43 @@
 pipeline { 
     agent any 
-    stages {
+    stages { 
+        stage('Checkout') { 
+            steps { 
+                git branch: 'master', url: 'https://github.com/Alvin10086/HelloWorldMaven.git' 
+            } 
+        } 
         stage('Build') { 
-            steps {
-                withMaven(maven : 'apache-maven-3.6.0'){
-                        sh "mvn clean compile"
-                }
-            }
-        }
-        stage('Test'){
-            steps {
-                withMaven(maven : 'apache-maven-3.6.0'){
-                        sh "mvn test"
-                }
-
-            }
-        }
-        stage('build && SonarQube analysis') {
-            steps {
-                withSonarQubeEnv('sonar.tools.devops.****') {
-                    sh 'sonar-scanner -Dsonar.projectKey=myProject -Dsonar.sources=./src'
-                }
-            }
-        }
-        stage("Quality Gate") {
-            steps {
-                timeout(time: 1, unit: 'HOURS') {
-                    // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
-                    // true = set pipeline to UNSTABLE, false = don't
-                    // Requires SonarScanner for Jenkins 2.7+
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-			}
-        stage('Deploy') {
-            steps {
-               withMaven(maven : 'apache-maven-3.6.0'){
-                        sh "mvn deploy"
-                }
-
-            }
-        }
-    }
+            steps { 
+                powershell '''
+                        mvn site
+                        mvn clean package > build.log
+                        '''
+                } 
+        } 
+        stage('Test') { 
+            steps { 
+                powershell '''
+                        mvn test
+                        mvn clean test
+                        '''
+                } 
+        } 
+        stage('Deploy') { 
+            steps { powershell 'java -jar target/HelloWorldMaven-1.1.1-RELEASE-jar-with-dependencies.jar'}            
+        }     
 }
+post { 
+always { 
+echo 'Cleaning up workspace' 
+deleteDir() // Clean up the workspace after the build 
+} 
+success { 
+echo 'Build succeeded!!!' 
+// You could add notification steps here 
+} 
+failure { 
+echo 'Build failed!' 
+// You could add notification steps here 
+} 
+} 
+} 
